@@ -1,0 +1,9 @@
+[workspace]
+members = [
+  "libbpf-cargo",
+  "libbpf-rs",
+  "examples/runqslower",
+  "examples/bpf_query",
+  "examples/capable",
+  "examples/tc_port_whitelist",
+]

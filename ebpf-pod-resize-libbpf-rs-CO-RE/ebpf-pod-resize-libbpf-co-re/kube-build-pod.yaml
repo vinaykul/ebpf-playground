@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kube-build-pod
+  annotations:
+    "ebpf-resize": '{
+            "cname": "kube-build-ctr",
+            "commands": ["make"],
+            "resize": "{\"requests\":{\"memory\":\"5Gi\"},\"limits\":{\"memory\":\"5Gi\"}}"
+    }'
+spec:
+  containers:
+  - name: kube-build-ctr
+    image: skiibum/kube-build:v1.25
+    imagePullPolicy: IfNotPresent
+    command: ["tail", "-f", "/dev/null"]
+    resources:
+      limits:
+        cpu: "5"
+        memory: "50Mi"
+      requests:
+        cpu: "4"
+        memory: "50Mi"

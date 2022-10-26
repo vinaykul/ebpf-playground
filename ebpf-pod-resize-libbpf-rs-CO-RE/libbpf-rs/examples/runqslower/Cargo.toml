@@ -1,0 +1,16 @@
+[package]
+name = "runqslower"
+version = "0.1.0"
+authors = ["Daniel Xu <dxu@dxuuu.xyz>"]
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+libbpf-rs = { path = "../../libbpf-rs" }
+libc = "0.2"
+plain = "0.2"
+time = { version = "0.3", features = ["formatting", "local-offset", "macros"]}
+clap = { version = "3.1", default-features = false, features = ["std", "derive"] }
+
+[build-dependencies]
+libbpf-cargo = { path = "../../libbpf-cargo" }

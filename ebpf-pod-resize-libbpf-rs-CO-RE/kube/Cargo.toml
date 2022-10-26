@@ -1,0 +1,13 @@
+[workspace]
+default-members = ["kube"]
+members = [
+  "kube",
+  "kube-client",
+  "kube-core",
+  "kube-derive",
+  "kube-runtime",
+
+  # internal
+  "e2e",
+  "examples",
+]

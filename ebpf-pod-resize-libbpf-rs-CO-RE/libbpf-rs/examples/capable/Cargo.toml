@@ -1,0 +1,20 @@
+[package]
+name = "capable"
+version = "0.1.0"
+authors = ["Devasia Thomas <https://www.linkedin.com/in/devasiathomas>"]
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+libbpf-rs = { path = "../../libbpf-rs" }
+libc = "0.2"
+phf = { version = "0.10", features = ["macros"] }
+plain = "0.2"
+time = { version = "0.3", features = ["formatting", "local-offset", "macros"]}
+clap = { version = "3.1", default-features = false, features = ["std", "derive"] }
+
+[build-dependencies]
+libbpf-cargo = { path = "../../libbpf-cargo" }
+
+[features]
+static = ["libbpf-rs/static"]

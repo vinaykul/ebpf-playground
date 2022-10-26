@@ -1,0 +1,10 @@
+[package]
+name = "bpf_query"
+version = "0.1.0"
+authors = ["Daniel Xu <dxu@dxuuu.xyz>"]
+edition = "2021"
+
+[dependencies]
+libbpf-rs = { path = "../../libbpf-rs" }
+nix = { version = "0.24", default-features = false, features = ["net", "user"] }
+clap = { version = "3.1", default-features = false, features = ["std", "derive"] }

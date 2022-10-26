@@ -1,0 +1,34 @@
+[package]
+name = "e2e"
+version = "0.1.0"
+authors = ["clux <sszynrae@gmail.com>"]
+publish = false
+edition = "2021"
+license = "Apache-2.0"
+
+[package.metadata.release]
+release = false
+
+[[bin]]
+name = "job"
+path = "job.rs"
+
+[[bin]]
+name = "boot"
+path = "boot.rs"
+
+[features]
+latest = ["k8s-openapi/v1_25"]
+mk8sv = ["k8s-openapi/v1_20"]
+rustls = ["kube/rustls-tls"]
+openssl = ["kube/openssl-tls"]
+
+[dependencies]
+anyhow = "1.0.44"
+tracing = "0.1.29"
+tracing-subscriber = "0.3.3"
+futures = "0.3.17"
+kube = { path = "../kube", version = "^0.75.0", default-features = false, features = ["client", "runtime", "ws", "admission", "gzip"] }
+k8s-openapi = { version = "0.16.0", default-features = false }
+serde_json = "1.0.68"
+tokio = { version = "1.14.0", features = ["full"] }

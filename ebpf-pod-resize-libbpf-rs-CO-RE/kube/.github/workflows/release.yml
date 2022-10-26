@@ -1,0 +1,27 @@
+name: release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'kube-rs' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Generate release info
+        run: ./scripts/release-gh.sh
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Note: body is pre-pended to generated release notes
+          body_path: release.txt
+          # github generated notes based on changelog-* tags
+          # the format of this is configured in the github native: .github/release.yml
+          generate_release_notes: true
+          draft: true

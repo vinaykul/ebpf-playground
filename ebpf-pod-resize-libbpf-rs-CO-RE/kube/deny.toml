@@ -1,0 +1,90 @@
+# examples sometimes lag behind as they use higher level dependencies
+# we exclude these from the check because they are not part of our
+# actual dependency tree
+exclude = ["kube-examples"]
+
+[advisories]
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+vulnerability = "deny"
+unmaintained = "warn"
+yanked = "warn"
+notice = "warn"
+ignore = [
+    # Ignoring issues related to `localtime_r` for now
+    # See https://github.com/kube-rs/kube/issues/650
+    #
+    # Potential segfault in the `time` crate
+    # Tracking issue: https://github.com/kube-rs/kube/issues/656
+    # PR to update `time`: https://github.com/chronotope/chrono/pull/578
+    "RUSTSEC-2020-0071",
+    # Potential segfault in `localtime_r` invocations
+    # Tracking issue: https://github.com/kube-rs/kube/issues/660
+    # Upstream issue: https://github.com/chronotope/chrono/issues/499
+    "RUSTSEC-2020-0159",
+]
+
+
+[licenses]
+# See https://spdx.org/licenses/ for list of possible licenses
+# [possible values: any SPDX 3.11 short identifier (+ optional exception)].
+
+confidence-threshold = 1.0
+copyleft = "deny"
+default = "deny"
+unlicensed = "deny"
+
+# We are beholden to https://github.com/cncf/foundation/blob/master/allowed-third-party-license-policy.md#approved-licenses-for-allowlist
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "ISC",
+    "LicenseRef-ring",
+    "LicenseRef-webpki",
+]
+
+exceptions = [
+    # The Unicode-DFS--2016 license is necessary for unicode-ident because they
+    # use data from the unicode tables to generate the tables which are
+    # included in the application. We do not distribute those data files so
+    # this is not a problem for us. See https://github.com/dtolnay/unicode-ident/pull/9/files
+    # for more details.
+    { allow = ["Unicode-DFS-2016"], name = "unicode-ident" }
+
+]
+
+[[licenses.clarify]]
+name = "ring"
+expression = "LicenseRef-ring"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 },
+]
+
+
+[[licenses.clarify]]
+name = "webpki"
+expression = "LicenseRef-webpki"
+license-files = [
+    { path = "LICENSE", hash = 0x001c7e6c },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
+
+[bans]
+multiple-versions = "deny"
+
+[[bans.skip]]
+# Waiting on https://github.com/Keats/validator/pull/233
+name = "idna"
+version = "0.2"
+
+[[bans.skip]]
+# waiting for ahash/getrandom to bump wasi as we have two branches:
+# ahash -> getrandom -> wasi old
+# tokio -> mio -> wasi new
+name = "wasi"
