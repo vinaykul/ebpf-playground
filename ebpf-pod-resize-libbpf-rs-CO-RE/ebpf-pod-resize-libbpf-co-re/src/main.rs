@@ -56,7 +56,7 @@ async fn resize_k8s_pod(pod_ns: &str, pod_name: &str, container_name: &str) -> R
         let resize_json: Value = serde_json::from_str(ann.get("ebpf-resize").unwrap())?;
         println!("DBG: resizing pod NS: '{}' NAME: '{}' CNAME: '{}' RESIZE: '{:?}'", pod_ns, pod_name, container_name, resize_json["resize"]);
         let mut pod_resize_cmd = Command::new("./patch-pod-resources.sh");
-        pod_resize_cmd.arg(pod_name).arg(container_name).arg(resize_json["resize"].as_str().unwrap()); //TODO: fix to use pod_ns
+        pod_resize_cmd.arg(pod_name).arg(container_name).arg(resize_json["resize"].as_str().unwrap()).arg(pod_ns);
         let pod_rszout = pod_resize_cmd.output().expect("failed to execute process");
         println!("DBG: RSZOUT: '{:?}'", pod_rszout);
 
