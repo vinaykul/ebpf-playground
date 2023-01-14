@@ -47,6 +47,9 @@ spec:
       hostPID: true
       hostIPC: true
       volumes:
+      - name: run-volume
+        hostPath:
+          path: /run
       - name: sys-volume
         hostPath:
           path: /sys
@@ -80,12 +83,20 @@ spec:
       - name: run-ebpf-netstats-attach-poc
         image: skiibum/ebpf-netstats-attach-arm64:poc
         imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+          allowPrivilegeEscalation: true
+          capabilities:
+            add: ["SYS_RESOURCE", "SYS_ADMIN", "SYS_PTRACE", "NET_ADMIN", "BPF", "PERFMON"]
         command: ["/launch-pod-network-setup-bpftrace.sh"]
         resources:
           requests:
             cpu: 500m
             memory: 500Mi
         volumeMounts:
+        - name: run-volume
+          mountPath: /run
+          readOnly: false
         - name: sys-volume
           mountPath: /sys
           readOnly: false
@@ -101,7 +112,3 @@ spec:
         - name: var-run-containerd-volume
           mountPath: /hostvarrun
           readOnly: true
-        securityContext:
-          allowPrivilegeEscalation: true
-          capabilities:
-            add: ["SYS_RESOURCE", "SYS_ADMIN", "BPF", "PERFMON"]

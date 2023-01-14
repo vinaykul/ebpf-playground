@@ -27,7 +27,7 @@ def get_cni_veth_interfaces():
     ifaces.select_fields('ifname', 'link_netnsid')
     for iface in ifaces:
         print("Interface_NAME: {} , Interface_NetNSID: {}".format(iface['ifname'], iface['link_netnsid']))
-        netnscmd = "ip netns list-id nsid {}".format(iface['link_netnsid'])
+        netnscmd = "nsenter -t 1 -m -u -n -i ip netns list-id nsid {}".format(iface['link_netnsid'])
         print(netnscmd)
         r = subprocess.Popen(netnscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = r.stdout.read().decode().strip()
