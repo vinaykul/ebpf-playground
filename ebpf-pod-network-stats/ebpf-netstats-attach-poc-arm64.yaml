@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ebpf-netstats-attach-poc
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ebpf-netstats-attach-poc
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: ebpf-netstats-attach-poc
+    namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ebpf-netstats-attach-poc
+  namespace: kube-system
+  labels:
+    k8s-app: ebpf-netstats-attach-poc
+spec:
+  selector:
+    matchLabels:
+      name: ebpf-netstats-attach-poc
+  template:
+    metadata:
+      labels:
+        name: ebpf-netstats-attach-poc
+    spec:
+      serviceAccountName: ebpf-netstats-attach-poc
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      hostNetwork: true
+      hostPID: true
+      hostIPC: true
+      volumes:
+      - name: sys-volume
+        hostPath:
+          path: /sys
+      - name: usr-src-volume
+        emptyDir: {}
+      - name: usr-lib-modules-volume
+        emptyDir: {}
+      - name: usr-bin-containerd-volume
+        hostPath:
+          path: /usr/bin
+      - name: var-run-containerd-volume
+        hostPath:
+          path: /var/run/containerd
+      initContainers:
+      - name: init-ebpf-netstats-attach-poc
+        image: skiibum/ebpf-netstats-attach-arm64:poc
+        imagePullPolicy: IfNotPresent
+        command: ["/ebpf-netstats-attach-container-init.sh"]
+        securityContext:
+          allowPrivilegeEscalation: true
+          capabilities:
+            add: ["SYS_ADMIN"]
+        volumeMounts:
+        - name: usr-src-volume
+          mountPath: /usr/src
+          readOnly: false
+        - name: usr-lib-modules-volume
+          mountPath: /usr/lib/modules
+          readOnly: false
+      containers:
+      - name: run-ebpf-netstats-attach-poc
+        image: skiibum/ebpf-netstats-attach-arm64:poc
+        imagePullPolicy: IfNotPresent
+        command: ["/launch-pod-network-setup-bpftrace.sh"]
+        resources:
+          requests:
+            cpu: 500m
+            memory: 500Mi
+        volumeMounts:
+        - name: sys-volume
+          mountPath: /sys
+          readOnly: false
+        - name: usr-src-volume
+          mountPath: /usr/src
+          readOnly: false
+        - name: usr-lib-modules-volume
+          mountPath: /usr/lib/modules
+          readOnly: false
+        - name: usr-bin-containerd-volume
+          mountPath: /hostusrbin
+          readOnly: true
+        - name: var-run-containerd-volume
+          mountPath: /hostvarrun
+          readOnly: true
+        securityContext:
+          allowPrivilegeEscalation: true
+          capabilities:
+            add: ["SYS_RESOURCE", "SYS_ADMIN", "BPF", "PERFMON"]

@@ -5,6 +5,7 @@
 #    eBPF_SECTION_NAME: Name of section in the eBPF program to attach
 # Usage: python3 attach_ebpf_stats_prog.py
 
+import datetime
 import os
 import subprocess
 from pyroute2 import NDB
@@ -48,26 +49,44 @@ def get_ebpf_stats_target_interfaces(iflist):
 # Attach eBPF stats program to target interfaces
 def attach_ebpf_stats_to_target_interfaces(target_iflist):
     for iface in target_iflist:
+        print(">>DBG-attach-stats: IFNAME='{}'".format(iface['ifname']))
         tcqdiscshowcmd = "tc qdisc show dev {} | grep clsact".format(iface['ifname'])
-        r = subprocess.Popen(tcqdiscshowcmd, shell=True, stdout=subprocess.PIPE)
+        r = subprocess.Popen(tcqdiscshowcmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = r.stdout.read().decode().strip()
+        err = r.stderr.read().decode().strip()
+        print("DBG-OUT-tc-qdisc-show: '{}'".format(output))
+        print("DBG-ERR-tc-qdisc-show: '{}'".format(err))
+        if len(err) > 0:
+            print("FAIL: 'tc qdisc show' for interface '{}' failed ERROR='{}'".format(iface['ifname']), err)
+            return
+        # Do 'tc qdisc add clsact'
         if len(output) == 0:
             tcqdiscaddcmd = "tc qdisc add dev {} clsact".format(iface['ifname'])
-            r = subprocess.Popen(tcqdiscaddcmd, shell=True, stdout=subprocess.PIPE)
+            #TODO: Add helper function to execute and eliminate duplicate code
+            r = subprocess.Popen(tcqdiscaddcmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             output = r.stdout.read().decode().strip()
+            err = r.stderr.read().decode().strip()
+            print("DBG-OUT-tc-qdisc-add: '{}'".format(output))
+            print("DBG-ERR-tc-qdisc-add: '{}'".format(err))
+            if len(err) > 0:
+                print("FAIL: 'tc qdisc add' for interface '{}' failed ERROR='{}'".format(iface['ifname']), err)
+                return
             if len(output) == 0:
                 print("tc classifier action successfully added for interface {}".format(iface['ifname']))
-            else:
-                print("Failed to add tc classifier action on  interface {}".format(iface['ifname']))
-            tcfilteraddcmd = "tc filter add dev {} ingress bpf da obj {} sec {}".format(iface['ifname'],
-                    eBPF_program_name, eBPF_section_name)
-            print(tcfilteraddcmd)
-            r = subprocess.Popen(tcqdiscaddcmd, shell=True, stdout=subprocess.PIPE)
-            output = r.stdout.read().decode().strip()
-            if len(output) == 0:
-                print("eBPF program '{}' successfully attached to interface {}".format(eBPF_program_name, iface['ifname']))
-            else:
-                print("Failed to attach eBPF program '{}' to interface {}".format(eBPF_program_name, iface['ifname']))
+        # Attach eBPF stats program to veth ingress
+        tcfilteraddcmd = "tc filter add dev {} ingress bpf da obj {} sec {}".format(iface['ifname'], eBPF_program_name, eBPF_section_name)
+        print(tcfilteraddcmd)
+        r = subprocess.Popen(tcfilteraddcmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output = r.stdout.read().decode().strip()
+        err = r.stderr.read().decode().strip()
+        print("DBG-OUT-tc-filter-add: '{}'".format(output))
+        print("DBG-ERR-tc-filter-add: '{}'".format(err))
+        if len(err) > 0:
+            print("FAIL: 'tc filter add' for interface '{}' failed ERROR='{}'".format(iface['ifname']), err)
+            return
+        if len(output) == 0:
+            now = datetime.datetime.now()
+            print("{}: eBPF program '{}' successfully attached to interface {}".format(now, eBPF_program_name, iface['ifname']))
 
 
 # Main function

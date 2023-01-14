@@ -14,22 +14,6 @@
 #include <linux/if_ether.h>
 #include <linux/ip.h>
 
-#if 0
-#include <linux/in.h>
-//#include <bpf/bpf_tracing.h>
-#endif
-
-#if 0
-#define MAX_POD_INTERFACES 400
-
-struct bpf_elf_map SEC("maps") pod_net_stats_tx_map = {
-    .type        = BPF_MAP_TYPE_HASH,
-    .size_key    = sizeof(struct tx_net_stats_key_t),
-    .size_value  = sizeof(struct tx_net_stats_t),
-    .max_elem    = MAX_POD_INTERFACES,
-    .pinning     = PIN_GLOBAL_NS,
-};
-#endif
 
 SEC("pod_net_stats_tx")
 int tc_pod_net_stats_tx(struct __sk_buff *skb)
