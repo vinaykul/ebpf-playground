@@ -19,21 +19,21 @@ eBPF_section_name=TX_STATS_eBPF_SECTION_NAME
 
 # Find all the veth interfaces created by containerd (NetNS name begins with 'cni-')
 def get_cni_veth_interfaces():
-    print(">>get_cni_veth_interfaces")
+    #print(">>get_cni_veth_interfaces")
     ndb = NDB()
     iflist = []
     ifaces = ndb.interfaces.dump()
     ifaces.select_records(state='up', kind='veth')
     ifaces.select_fields('ifname', 'link_netnsid')
     for iface in ifaces:
-        print("Interface_NAME: {} , Interface_NetNSID: {}".format(iface['ifname'], iface['link_netnsid']))
+        #print("Interface_NAME: {} , Interface_NetNSID: {}".format(iface['ifname'], iface['link_netnsid']))
         netnscmd = "nsenter -t 1 -m -u -n -i ip netns list-id nsid {}".format(iface['link_netnsid'])
-        print(netnscmd)
+        #print(netnscmd)
         r = subprocess.Popen(netnscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = r.stdout.read().decode().strip()
         err = r.stderr.read().decode().strip()
-        print("DBG-OUT-ip-netns-list: '{}'".format(output))
-        print("DBG-ERR-ip-netns-list: '{}'".format(err))
+        #print("DBG-OUT-ip-netns-list: '{}'".format(output))
+        #print("DBG-ERR-ip-netns-list: '{}'".format(err))
         if len(err) > 0:
             print("FAIL: 'ip netns list-id' for interface '{}' failed ERROR='{}'".format(iface['ifname'], err))
             return None
@@ -57,13 +57,13 @@ def get_ebpf_stats_target_interfaces(iflist):
 # Attach eBPF stats program to target interfaces
 def attach_ebpf_stats_to_target_interfaces(target_iflist):
     for iface in target_iflist:
-        print(">>DBG-attach-stats: IFNAME='{}'".format(iface['ifname']))
+        #print(">>DBG-attach-stats: IFNAME='{}'".format(iface['ifname']))
         tcqdiscshowcmd = "tc qdisc show dev {} | grep clsact".format(iface['ifname'])
         r = subprocess.Popen(tcqdiscshowcmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = r.stdout.read().decode().strip()
         err = r.stderr.read().decode().strip()
-        print("DBG-OUT-tc-qdisc-show: '{}'".format(output))
-        print("DBG-ERR-tc-qdisc-show: '{}'".format(err))
+        #print("DBG-OUT-tc-qdisc-show: '{}'".format(output))
+        #print("DBG-ERR-tc-qdisc-show: '{}'".format(err))
         if len(err) > 0:
             print("FAIL: 'tc qdisc show' for interface '{}' failed ERROR='{}'".format(iface['ifname']), err)
             return
@@ -74,21 +74,21 @@ def attach_ebpf_stats_to_target_interfaces(target_iflist):
             r = subprocess.Popen(tcqdiscaddcmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             output = r.stdout.read().decode().strip()
             err = r.stderr.read().decode().strip()
-            print("DBG-OUT-tc-qdisc-add: '{}'".format(output))
-            print("DBG-ERR-tc-qdisc-add: '{}'".format(err))
+            #print("DBG-OUT-tc-qdisc-add: '{}'".format(output))
+            #print("DBG-ERR-tc-qdisc-add: '{}'".format(err))
             if len(err) > 0:
                 print("FAIL: 'tc qdisc add' for interface '{}' failed ERROR='{}'".format(iface['ifname']), err)
                 return
-            if len(output) == 0:
-                print("tc classifier action successfully added for interface {}".format(iface['ifname']))
+            #if len(output) == 0:
+            #    print("tc classifier action successfully added for interface {}".format(iface['ifname']))
         # Attach eBPF stats program to veth ingress
         tcfilteraddcmd = "tc filter add dev {} ingress bpf da obj {} sec {}".format(iface['ifname'], eBPF_program_name, eBPF_section_name)
-        print(tcfilteraddcmd)
+        #print(tcfilteraddcmd)
         r = subprocess.Popen(tcfilteraddcmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = r.stdout.read().decode().strip()
         err = r.stderr.read().decode().strip()
-        print("DBG-OUT-tc-filter-add: '{}'".format(output))
-        print("DBG-ERR-tc-filter-add: '{}'".format(err))
+        #print("DBG-OUT-tc-filter-add: '{}'".format(output))
+        #print("DBG-ERR-tc-filter-add: '{}'".format(err))
         if len(err) > 0:
             print("FAIL: 'tc filter add' for interface '{}' failed ERROR='{}'".format(iface['ifname']), err)
             return
@@ -100,11 +100,11 @@ def attach_ebpf_stats_to_target_interfaces(target_iflist):
 # Main function
 def main():
     iflist = get_cni_veth_interfaces()
-    print(iflist)
+    #print(iflist)
 
     if iflist is not None:
         target_iflist = get_ebpf_stats_target_interfaces(iflist)
-        print(target_iflist)
+        #print(target_iflist)
 
         if target_iflist is not None:
             attach_ebpf_stats_to_target_interfaces(target_iflist)

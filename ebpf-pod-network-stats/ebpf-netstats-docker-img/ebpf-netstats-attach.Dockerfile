@@ -28,6 +28,7 @@ RUN pip3 install --upgrade pyroute2
 #TODO: Replace this demo bpf_network_stats.o with desired (real) eBPF stats program
 COPY ebpf-netstats-program/obj/bpf_network_stats.o /obj/
 COPY ebpf-netstats-docker-img/attach_ebpf_netstats_prog.sh /
+COPY ebpf-netstats-docker-img/do_attach_ebpf_netstats_prog.sh /
 COPY ebpf-netstats-docker-img/attach_ebpf_netstats_prog.py /
 COPY ebpf-netstats-docker-img/ebpf-netstats-attach-container-init.sh /
 COPY ebpf-netstats-docker-img/launch-pod-network-setup-bpftrace.sh /

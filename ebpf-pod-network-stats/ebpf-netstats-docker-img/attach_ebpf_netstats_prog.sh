@@ -11,5 +11,10 @@
 #      generated network namespaces ('cni-' prefix). Specifying only certain CNI network interfaces (via pod
 #      annotations or some other means) is a possible future work item if that is desired.
 #if [ $1 == 0 ]; then
-    python3 /attach_ebpf_netstats_prog.py
+#    echo $(date '+%T.%N') > /tmp/timestamp
+#    python3 /attach_ebpf_netstats_prog.py
+#    echo $(date '+%T.%N') >> /tmp/timestamp
 #fi
+
+# Directly invoke shell commands to attach eBPF program because python program performance sucks
+/do_attach_ebpf_netstats_prog.sh
