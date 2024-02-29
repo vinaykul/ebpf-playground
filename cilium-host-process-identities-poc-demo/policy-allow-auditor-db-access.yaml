@@ -1,0 +1,12 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: "allow-auditor-to-access-db"
+spec:
+  endpointSelector:
+    matchLabels:
+      role: database
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        role: auditor

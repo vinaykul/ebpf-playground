@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bank-auditor
+  labels:
+    role: auditor
+spec:
+  hostNetwork: true
+  nodeName: master
+  containers:
+  - name: ctr
+    image: skiibum/testpod:qos
