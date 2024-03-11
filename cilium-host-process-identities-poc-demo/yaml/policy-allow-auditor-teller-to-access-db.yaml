@@ -1,0 +1,14 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "allow-teller-auditor-to-access-db"
+spec:
+  endpointSelector:
+    matchLabels:
+      role: database
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        role: teller
+    - matchLabels:
+        role: auditor

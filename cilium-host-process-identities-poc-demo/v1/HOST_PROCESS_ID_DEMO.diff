@@ -1,0 +1,140 @@
+commit 7a4591572e199218168f3de606db4775cfd5dbc3
+Author: vinay kulkarni <vskibum@gmail.com>
+Date:   Wed Feb 28 23:44:33 2024 +0000
+
+    Host Process Identities for hostNetwork=true pods - PoC
+
+diff --git a/bpf/Makefile b/bpf/Makefile
+index 38475c8b61..26a355528d 100644
+--- a/bpf/Makefile
++++ b/bpf/Makefile
+@@ -85,6 +85,7 @@ MAX_BASE_OPTIONS += -DENABLE_MASQUERADE_IPV4=1 -DENABLE_MASQUERADE_IPV6=1 \
+ 	-DENABLE_NODEPORT_ACCELERATION=1 -DENABLE_SESSION_AFFINITY=1 \
+ 	-DENABLE_DSR_ICMP_ERRORS=1 -DENABLE_DSR=1 -DENABLE_DSR_HYBRID=1 \
+ 	-DENABLE_IPV4_FRAGMENTS=1
++MAX_BASE_OPTIONS += -DENABLE_HOST_PROCESS_NETID
+ ifneq (,$(filter $(KERNEL),54 510 61 netnext))
+ # Egress Gateway requires >= 5.2 kernels, bandwidth manager requires >= 5.1.
+ MAX_BASE_OPTIONS += -DENABLE_BANDWIDTH_MANAGER=1 -DENABLE_EGRESS_GATEWAY=1 -DENABLE_VTEP=1
+diff --git a/bpf/bpf_alignchecker.c b/bpf/bpf_alignchecker.c
+index 7f4f6f789d..96917973b7 100644
+--- a/bpf/bpf_alignchecker.c
++++ b/bpf/bpf_alignchecker.c
+@@ -87,3 +87,5 @@ add_type(struct tunnel_key);
+ add_type(struct tunnel_value);
+ add_type(struct auth_key);
+ add_type(struct auth_info);
++add_type(struct host_process_netid_key);
++add_type(struct host_process_netid_value);
+diff --git a/bpf/include/bpf/helpers.h b/bpf/include/bpf/helpers.h
+index 3d15aedd8a..f05f78005a 100644
+--- a/bpf/include/bpf/helpers.h
++++ b/bpf/include/bpf/helpers.h
+@@ -98,6 +98,8 @@ static int BPF_FUNC_REMAP(get_socket_opt, void *ctx, int level, int optname,
+ 
+ static __u64 BPF_FUNC(get_current_cgroup_id);
+ 
++static __u64 BPF_FUNC(skb_cgroup_id, struct __sk_buff *skb);
++
+ static int BPF_FUNC(set_retval, int retval);
+ 
+ static inline int try_set_retval(int retval __maybe_unused)
+diff --git a/bpf/lib/common.h b/bpf/lib/common.h
+index 85146221bb..02493ca941 100644
+--- a/bpf/lib/common.h
++++ b/bpf/lib/common.h
+@@ -1196,6 +1196,14 @@ struct lpm_val {
+ 	__u8 flags;
+ };
+ 
++struct host_process_netid_key {
++        __u64 cgroup_id; /* cgroup id of the host process */
++};
++
++struct host_process_netid_value {
++        __u32 network_id; /* 24-bit network identity value for the host process */
++};
++
+ /* Older kernels don't support the larger tunnel key structure and we don't
+  * need it since we only want to retrieve the tunnel ID anyway.
+  */
+diff --git a/bpf/lib/encap.h b/bpf/lib/encap.h
+index 2667e0ed5f..30f6deecb9 100644
+--- a/bpf/lib/encap.h
++++ b/bpf/lib/encap.h
+@@ -32,6 +32,28 @@ __encap_with_nodeid(struct __ctx_buff *ctx, __u32 src_ip, __be16 src_port,
+ 	if (seclabel == HOST_ID)
+ 		seclabel = LOCAL_NODE_ID;
+ 
++#ifdef ENABLE_HOST_PROCESS_NETID
++#if __ctx_is == __ctx_skb
++{
++	/* Lookup BPF map for host process or hostNetwork pod process cgroup-id <> network-id entry
++	 * If found, use it as network identity and encapsulate.
++	 * If not found, we can take actions based on policy. Choices we have:
++	 *   a) default allow without encap
++	 *   b) encap with WORLD_ID or UNMAMAGED_ID or something appropriate
++	 *   c) default drop
++	 */
++	__u64 cgroup_id = skb_cgroup_id(ctx);
++	struct host_process_netid_key netidkey;
++	struct host_process_netid_value *netidvalue;
++	netidkey.cgroup_id = cgroup_id;
++	netidvalue = map_lookup_elem(&HOST_PROCESS_NETID_MAP, &netidkey);
++	if (netidvalue != NULL) {
++		seclabel = netidvalue->network_id;
++	}
++}
++#endif /*  __ctx_is == __ctx_skb */
++#endif /* ENABLE_HOST_PROCESS_NETID */
++
+ 	node_id = bpf_ntohl(tunnel_endpoint);
+ 
+ 	cilium_dbg(ctx, DBG_ENCAP, node_id, seclabel);
+diff --git a/bpf/lib/maps.h b/bpf/lib/maps.h
+index 07067bc61e..cb73c4ec49 100644
+--- a/bpf/lib/maps.h
++++ b/bpf/lib/maps.h
+@@ -321,4 +321,15 @@ static __always_inline void ep_tail_call(struct __ctx_buff *ctx __maybe_unused,
+ 	tail_call_static(ctx, &CALLS_MAP, index);
+ }
+ #endif /* SKIP_CALLS_MAP */
++
++#ifdef ENABLE_HOST_PROCESS_NETID
++struct {
++        __uint(type, BPF_MAP_TYPE_HASH);
++        __type(key, struct host_process_netid_key);
++        __type(value, struct host_process_netid_value);
++        __uint(pinning, LIBBPF_PIN_BY_NAME);
++        __uint(max_entries, HOST_PROCESS_NETID_MAP_SIZE);
++        __uint(map_flags, BPF_F_NO_PREALLOC);
++} HOST_PROCESS_NETID_MAP __section_maps_btf;
++#endif /* ENABLE_HOST_PROCESS_NETID */
+ #endif
+diff --git a/bpf/node_config.h b/bpf/node_config.h
+index 657a9cfa3c..1c8aa54fca 100644
+--- a/bpf/node_config.h
++++ b/bpf/node_config.h
+@@ -169,6 +169,7 @@ DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x
+ #define VTEP_MAP_SIZE 8
+ #define ENDPOINTS_MAP_SIZE 65536
+ #define METRICS_MAP_SIZE 65536
++#define HOST_PROCESS_NETID_MAP_SIZE 16384
+ #define CILIUM_NET_MAC  { .addr = { 0xce, 0x72, 0xa7, 0x03, 0x88, 0x57 } }
+ #define CILIUM_LB_REV_NAT_MAP_MAX_ENTRIES	65536
+ #define CILIUM_LB_SERVICE_MAP_MAX_ENTRIES	65536
+diff --git a/pkg/datapath/linux/config/config.go b/pkg/datapath/linux/config/config.go
+index 02c3af3b15..30e4015b34 100644
+--- a/pkg/datapath/linux/config/config.go
++++ b/pkg/datapath/linux/config/config.go
+@@ -572,6 +572,10 @@ func (h *HeaderfileWriter) WriteNodeConfig(w io.Writer, cfg *datapath.LocalNodeC
+ 
+ 	if option.Config.EnableHostFirewall {
+ 		cDefinesMap["ENABLE_HOST_FIREWALL"] = "1"
++		//TODO: Move to its own config
++		cDefinesMap["ENABLE_HOST_PROCESS_NETID"] = "1"
++		cDefinesMap["HOST_PROCESS_NETID_MAP"] = "host_process_netid_map"
++		cDefinesMap["HOST_PROCESS_NETID_MAP_SIZE"] = "16384"
+ 	}
+ 
+ 	if option.Config.EnableIPSec {

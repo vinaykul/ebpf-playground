@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bank-teller
+  labels:
+    role: teller
+spec:
+  nodeName: master
+  containers:
+  - name: ctr
+    image: skiibum/testpod:qos
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bank-db
+  labels:
+    role: database
+spec:
+  nodeName: node1
+  containers:
+  - name: ctr
+    image: skiibum/testpod:qos
